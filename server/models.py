@@ -1,12 +1,7 @@
-from flask import Flask, jsonify, request
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.orm import validates
 
 db = SQLAlchemy()
-app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///camp.db'
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-db.init_app(app)
 
 
 class Signup(db.Model):
@@ -52,46 +47,3 @@ class Activity(db.Model):
     name = db.Column(db.String)
     difficulty = db.Column(db.Integer)
     signups = db.relationship('Signup', back_populates='activity', cascade='all, delete-orphan')
-
-
-@app.errorhandler(ValueError)
-def handle_value_error(e):
-    return jsonify({"errors": [str(e)]}), 400
-
-
-
-@app.route("/campers", methods=["GET"])
-def get_campers():
-    campers = Camper.query.all()
-    return jsonify([{"id": c.id, "name": c.name, "age": c.age} for c in campers])
-
-
-@app.route("/campers/<int:id>", methods=["GET"])
-def get_camper(id):
-    camper = Camper.query.get(id)
-    if not camper:
-        return jsonify({"error": "Camper not found"}), 404
-    return jsonify({
-        "id": camper.id,
-        "name": camper.name,
-        "age": camper.age,
-        "signups": [{
-            "id": s.id,
-            "time": s.time,
-            "camper_id": s.camper_id,
-            "activity_id": s.activity_id
-        } for s in camper.signups]
-    })
-
-
-
-@app.route("/campers", methods=["POST"])
-def create_camper():
-    data = request.json
-    try:
-        camper = Camper(name=data.get("name"), age=data.get("age"))
-        db.session.add(camper)
-        db.session.commit()
-        return jsonify({"id": camper.id, "name": camper.name, "age": camper.age}), 201
-    except ValueError as e:
-        return handle_value_error(e)
